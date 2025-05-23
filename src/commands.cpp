@@ -22,3 +22,13 @@ Commands from_str(std::string_view cmd) {
     throw std::invalid_argument("Unknown command: " + std::string{cmd});
   return it->second;
 }
+
+
+std::string_view to_str(Commands cmd){
+  for (const auto& [name, command] : cmd_map){
+    if(command == cmd){
+      return name;
+    }
+  }
+  throw std::invalid_argument("how did we get here");
+}

@@ -13,3 +13,4 @@ enum class Commands {
 };
 
 Commands from_str(std::string_view cmd);
+std::string_view to_str(Commands cmd);
