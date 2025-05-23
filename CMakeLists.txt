@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(ProcessSim LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
 file(GLOB SRC CONFIGURE_DEPENDS src/*.cpp)
 add_executable(sim ${SRC}
         src/screen.cpp

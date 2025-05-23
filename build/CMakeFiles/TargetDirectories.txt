@@ -1,3 +1,0 @@
-/home/armaine/Documents/opesy-week-2/build/CMakeFiles/sim.dir
-/home/armaine/Documents/opesy-week-2/build/CMakeFiles/edit_cache.dir
-/home/armaine/Documents/opesy-week-2/build/CMakeFiles/rebuild_cache.dir

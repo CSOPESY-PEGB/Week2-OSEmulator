@@ -30,3 +30,23 @@
 *.exe
 *.out
 *.app
+
+
+# CMake build artifacts
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+_build/
+build/
+Build/
+out/
+*.dir/
+*.cbp
+*.depend
+*.layout
+*.gch

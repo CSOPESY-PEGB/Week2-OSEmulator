@@ -1,6 +1,7 @@
 #include "process_control_block.hpp"
 
 #include <sstream>
+#include <format>
 
 PCB::PCB(std::string procName, size_t totalLines)
     : processName(std::move(procName)),
