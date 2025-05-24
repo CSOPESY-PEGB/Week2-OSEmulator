@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <format>
+#include <iostream>
 
 PCB::PCB(std::string procName, size_t totalLines)
     : processName(std::move(procName)),
@@ -23,4 +24,23 @@ std::string PCB::status() const {
       << " Created at: "
       << std::format("{:%m/%d/%Y, %I:%M:%S %p}", creationTime);
   return oss.str();
+}
+
+void PCB::addToHistory(const std::string& command, const std::string& output) {
+    if (!command.empty()) {
+        sessionHistory.emplace_back(command, output);
+    }
+}
+
+void PCB::printHistory() const {
+    for (const auto& entry : sessionHistory) {
+        std::cout << "~ " << entry.command << "\n";
+        if (!entry.output.empty()) {
+            std::cout << entry.output << "\n";
+        }
+    }
+}
+
+void PCB::clearHistory() {
+    sessionHistory.clear();
 }
