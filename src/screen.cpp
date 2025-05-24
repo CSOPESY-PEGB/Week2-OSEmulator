@@ -116,16 +116,15 @@ void screen(std::vector<std::string>& args,
 
     switch (cmd) {
       case ScreenCommand::Start:
-        create_process(name, processes);
-        resume(name, processes, screenSession);
+        if(create_process(name, processes)){
+            resume(name, processes, screenSession);
+        };
         break;
 
     case ScreenCommand::Resume: {
         resume(name, processes, screenSession);
         break;
     }
-
-
 
       default:
         display_usage();
