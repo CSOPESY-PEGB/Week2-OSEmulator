@@ -43,29 +43,12 @@ bool create_process(const std::string& process_name, std::unordered_set<PCB>& pr
     }
 }
 
-void screen(std::vector<std::string>& args,
-            std::unordered_set<PCB>& processes,
-            bool& screenSession)
-{
-    if (args.size() != EXPECTED_ARGS_COUNT) {
-        display_usage();
-        return;
-    }
-
-    const ScreenCommand cmd = parse_command(args[0]);
-    const std::string& name = args[1];
-
-    switch (cmd) {
-      case ScreenCommand::Start:
-        create_process(name, processes);
-        break;
-
-    case ScreenCommand::Resume: {
-        PCB probe(name, 0);
+void resume(const std::string& name, std::unordered_set<PCB>& processes, bool& screenSession){
+    PCB probe(name, 0);
         auto it = processes.find(probe);
         if (it == processes.end()) {
             std::cout << "Couldn't find process named: " << name << "\n";
-            break;
+            return;
         }
 
         // Found it, enter interactive session
@@ -117,6 +100,28 @@ void screen(std::vector<std::string>& args,
             // Add command and its output to history
             pcb.addToHistory(line, commandOutput);
         }
+}
+
+void screen(std::vector<std::string>& args,
+            std::unordered_set<PCB>& processes,
+            bool& screenSession)
+{
+    if (args.size() != EXPECTED_ARGS_COUNT) {
+        display_usage();
+        return;
+    }
+
+    const ScreenCommand cmd = parse_command(args[0]);
+    const std::string& name = args[1];
+
+    switch (cmd) {
+      case ScreenCommand::Start:
+        create_process(name, processes);
+        resume(name, processes, screenSession);
+        break;
+
+    case ScreenCommand::Resume: {
+        resume(name, processes, screenSession);
         break;
     }
 
