@@ -22,7 +22,7 @@ std::string PCB::status() const {
   std::ostringstream oss;
   oss << processName << "  " << currentInstruction << "/" << totalInstructions
       << " Created at: "
-      << std::format("{:%m/%d/%Y, %I:%M:%S %p}", creationTime);
+      << std::format("{:%m/%d/%Y, %I:%M:%S %p}", std::chrono::time_point_cast<std::chrono::seconds>(creationTime));
   return oss.str();
 }
 
