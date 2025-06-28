@@ -29,7 +29,16 @@ Config::Config(uint32_t cpu, SchedulingAlgorithm sched, uint32_t quantum,
 Config Config::fromFile(const std::filesystem::path& file) {
   std::ifstream in(file);
   if (!in) {
-    throw std::runtime_error("Cannot open file: " + file.string());
+    // Usar configuración por defecto si no se encuentra el archivo
+    return Config(
+        1,                              // num-cpu
+        SchedulingAlgorithm::FCFS,      // scheduler
+        10,                             // quantum-cycles
+        10,                             // batch-process-freq
+        10,                             // min-ins
+        20,                             // max-ins
+        0                               // delay-per-exec
+    );
   }
 
   Config cfg;
@@ -39,7 +48,7 @@ Config Config::fromFile(const std::filesystem::path& file) {
       cfg.cpuCount = std::stoul(value);
     } else if (key == "scheduler") {
       cfg.scheduler = (value == "fcfs") ? SchedulingAlgorithm::FCFS
-                                        : SchedulingAlgorithm::RoundRobin;
+                                      : SchedulingAlgorithm::RoundRobin;
     } else if (key == "quantum-cycles") {
       cfg.quantumCycles = std::stoul(value);
     } else if (key == "batch-process-freq") {
