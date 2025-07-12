@@ -21,7 +21,6 @@ class PCB : public std::enable_shared_from_this<PCB> {
   bool isComplete() const;
   std::string status() const;
   
-  
   bool executeCurrentInstruction();
   const std::vector<std::string>& getExecutionLogs() const;
   
@@ -40,6 +39,7 @@ class PCB : public std::enable_shared_from_this<PCB> {
   std::optional<int> assignedCore;
   std::chrono::system_clock::time_point finishTime;
   
+  // REMOVED: bool has_memory{false}; This state does not belong here.
   
   std::vector<Expr> instructions;
   InstructionEvaluator evaluator;
@@ -48,4 +48,4 @@ class PCB : public std::enable_shared_from_this<PCB> {
 
 }  
 
-#endif  
+#endif

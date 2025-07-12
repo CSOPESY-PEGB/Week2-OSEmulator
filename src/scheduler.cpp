@@ -46,7 +46,6 @@ class Scheduler::CPUWorker {
  private:
 
    void run(){
-    // FIXED: Changed condition from !scheduler_.running_.load() to scheduler_.running_.load()
     while(scheduler_.running_.load()){
       std::unique_lock<std::mutex> lock(mutex_);
 
@@ -58,7 +57,6 @@ class Scheduler::CPUWorker {
         break;
       }
 
-      // FIXED: Added check to ensure we have a task before proceeding
       if (!current_task_) {
         idle_ = true;
         continue;
@@ -94,18 +92,17 @@ class Scheduler::CPUWorker {
       if(!scheduler_.running_.load() || shutdown_requested_.load()) break;
       last_tick = scheduler_.get_ticks();
 
-      // FIXED: Changed condition to execute on every tick, not just specific intervals
-      // This ensures processes actually make progress
       if(last_tick % (scheduler_.delay_per_exec_ + 1) == 0){
-        
         pcb->step();
-        
         steps++; 
       }
     }
 
     if(pcb->isComplete()){
         pcb->finishTime = std::chrono::system_clock::now();
+        if (scheduler_.memory_manager_) {
+            scheduler_.memory_manager_->free(pcb->processID);
+        }
         scheduler_.move_to_finished(pcb);
       } else {
         scheduler_.move_to_ready(pcb);
@@ -115,15 +112,10 @@ class Scheduler::CPUWorker {
   int core_id_;
   std::thread thread_;
   Scheduler& scheduler_;
-
   std::atomic<bool> idle_{true};
   std::atomic<bool> shutdown_requested_{false};
-
-  
   std::shared_ptr<PCB> current_task_;
   int time_quantum_;
-
-  
   std::mutex mutex_;
   std::condition_variable cv_;
 };
@@ -152,7 +144,32 @@ void Scheduler::dispatch(){
       if(!running_.load()) break;
       else continue;
     }
-
+    
+    // Check with the memory manager, the single source of truth.
+    bool can_run = false;
+    if (memory_manager_) {
+        if (memory_manager_->is_allocated(process->processID)) {
+            // It's already in memory, so it can run.
+            can_run = true;
+        } else {
+            // It's not in memory, try to allocate it.
+            if (memory_manager_->allocate(process->processID, mem_per_proc_)) {
+                // Allocation succeeded, so it can run.
+                can_run = true;
+            }
+            // If allocation fails, can_run remains false.
+        }
+    }
+    
+    if (!can_run) {
+        // Defer the process if it couldn't be run.
+        // std::cout << "PID " << process->processID << " deferred due to lack of memory. Returning to queue." << std::endl;
+        ready_queue_.push(std::move(process));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50)); 
+        continue;
+    }
+    
+    // If we reach here, the process has memory and is ready for a CPU.
     bool dispatched = false;
     while (!dispatched && running_.load()){
       for (auto& worker: cpu_workers_){
@@ -173,12 +190,10 @@ void Scheduler::dispatch(){
         }
       }
       
-      // FIXED: Added small delay to prevent busy waiting when no cores are available
       if (!dispatched && running_.load()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
     }
-    
   }
 }
 
@@ -193,6 +208,12 @@ void Scheduler::global_clock(){
         ticks_++;
     }
     clock_cv_.notify_all();
+
+    if (running_.load() && memory_manager_ && (ticks_.load() % quantum_cycles_) == 0 && ticks_.load() > 0) {
+        quantum_report_counter_++;
+        std::string filename = "memory_stamp_" + std::to_string(quantum_report_counter_.load()) + ".txt";
+        memory_manager_->generate_memory_report(filename);
+    }
   }
 }
 
@@ -201,6 +222,9 @@ void Scheduler::start(const Config& config) {
   delay_per_exec_ = config.delayCyclesPerInstruction;
   quantum_cycles_ = config.quantumCycles;
   algorithm_ = config.scheduler;
+
+  memory_manager_ = std::make_unique<MemoryManager>(config.maxOverallMemory);
+  mem_per_proc_ = config.memoryPerProcess;
 
   for (uint32_t i = 0; i < config.cpuCount; ++i) {
     cpu_workers_.push_back(std::make_unique<CPUWorker>(i, *this));
@@ -211,7 +235,6 @@ void Scheduler::start(const Config& config) {
 
   global_clock_thread_ = std::thread(&Scheduler::global_clock, this);
   dispatch_thread_ = std::thread(&Scheduler::dispatch, this);
-  
 }
 
 void Scheduler::stop() {
@@ -239,6 +262,8 @@ void Scheduler::stop() {
     global_clock_thread_.join();
   }
 
+  memory_manager_.reset();
+
   std::cout << "Scheduler stopped." << std::endl;
   std::cout << "Number of cycles from this run: " << ticks_.load() << std::endl;
 }
@@ -248,7 +273,6 @@ void Scheduler::submit_process(std::shared_ptr<PCB> pcb) {
     std::lock_guard<std::mutex> lock(map_mutex_);
     all_processes_map_[pcb->processName] = pcb;
   }
-
   ready_queue_.push(std::move(pcb));
 }
 
@@ -397,7 +421,7 @@ void Scheduler::generate_report(const std::string& filename) const {
   std::ofstream report_file(filename);
   
   if (!report_file.is_open()) {
-    std::cerr << "Failed to create report file: " << filename << std::endl;
+    // std::cerr << "Failed to create report file: " << filename << std::endl;
     return;
   }
 

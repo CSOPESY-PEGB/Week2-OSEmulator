@@ -9,7 +9,8 @@
 namespace osemu {
 
 Config::Config(uint32_t cpu, SchedulingAlgorithm sched, uint32_t quantum,
-               uint32_t freq, uint32_t minIns, uint32_t maxIns, uint32_t delay)
+               uint32_t freq, uint32_t minIns, uint32_t maxIns, uint32_t delay,
+               uint32_t maxMem, uint32_t memFrame, uint32_t memProc)
     : cpuCount{std::clamp(cpu, 1u, 128u)},
       scheduler{sched},
       quantumCycles{
@@ -20,7 +21,11 @@ Config::Config(uint32_t cpu, SchedulingAlgorithm sched, uint32_t quantum,
           std::clamp(minIns, 1u, std::numeric_limits<uint32_t>::max())},
       maxInstructions{std::clamp(maxIns, minInstructions,
                                  std::numeric_limits<uint32_t>::max())},
-      delayCyclesPerInstruction{delay} {
+      delayCyclesPerInstruction{delay},
+      // Initialize new memory members
+      maxOverallMemory{maxMem},
+      memoryPerFrame{memFrame},
+      memoryPerProcess{memProc} {
   if (scheduler != SchedulingAlgorithm::RoundRobin) {
     quantumCycles = 1;
   }
@@ -50,6 +55,12 @@ Config Config::fromFile(const std::filesystem::path& file) {
       cfg.maxInstructions = std::stoul(value);
     } else if (key == "delay-per-exec") {
       cfg.delayCyclesPerInstruction = std::stoul(value);
+    } else if (key == "max-overall-mem") { // New
+      cfg.maxOverallMemory = std::stoul(value);
+    } else if (key == "mem-per-frame") { // New
+      cfg.memoryPerFrame = std::stoul(value);
+    } else if (key == "mem-per-proc") { // New
+      cfg.memoryPerProcess = std::stoul(value);
     }
   }
   return cfg;

@@ -29,6 +29,7 @@ void dispatch(Commands cmd, std::vector<std::string>& args, Config& cfg,
 
       } catch (const std::exception& e) {
         std::cerr << "Error initializing config: " << e.what() << '\n';
+
       }
       break;
 

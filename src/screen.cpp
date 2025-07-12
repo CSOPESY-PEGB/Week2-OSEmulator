@@ -101,7 +101,7 @@ bool create_process(const std::string& process_name, Scheduler& scheduler, Confi
   //check for existing processname
   if (scheduler.find_process_by_name(process_name) != nullptr) {
     std::cerr << "Error: Process '" << process_name << "' already exists. Please choose a unique name." << std::endl;
-    return false; // Abort the creation
+    return false;
   }
 
   InstructionGenerator generator;
