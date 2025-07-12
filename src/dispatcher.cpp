@@ -58,7 +58,7 @@ void dispatch(Commands cmd, std::vector<std::string>& args, Config& cfg,
       break;
 
     case Commands::Clear:
-      std::cout << "\x1b[2J\x1b[H";
+      system("clear");
       console_prompt();
       break;
 

@@ -79,19 +79,12 @@ bool MemoryManager::is_allocated(uint32_t pcb_id) const {
     return false; // Process not found in memory.
 }
 
-// --- generate_memory_report is unchanged ---
-void MemoryManager::generate_memory_report(const std::string& filename) const {
-    // ... same as before
-    std::lock_guard<std::mutex> lock(memory_mutex_);
-    std::ofstream report_file(filename);
 
-    if (!report_file) {
-        std::cerr << "Error: Could not open report file " << filename << std::endl;
-        return;
-    }
+void MemoryManager::write_memory_report(std::ostream& out) const {
+    std::lock_guard<std::mutex> lock(memory_mutex_);
 
     auto now = std::chrono::system_clock::now();
-    report_file << "Timestamp: " << std::format("{:%m/%d/%Y %I:%M:%S %p}", now) << "\n";
+    out << "Timestamp: " << std::format("{:%m/%d/%Y %I:%M:%S %p}", now) << "\n";
 
     size_t procs_in_mem = 0;
     uint32_t external_frag_bytes = 0;
@@ -103,20 +96,36 @@ void MemoryManager::generate_memory_report(const std::string& filename) const {
         }
     }
 
-    report_file << "Number of processes in memory: " << procs_in_mem << "\n";
-    report_file << "Total external fragmentation: " << std::fixed << std::setprecision(2) << (static_cast<double>(external_frag_bytes) / 1024.0) << " KB\n\n";
+    out << "Number of processes in memory: " << procs_in_mem << "\n";
+    out << "Total external fragmentation: " << std::fixed << std::setprecision(2)
+        << (static_cast<double>(external_frag_bytes) / 1024.0) << " KB\n\n";
 
-    report_file << std::format("[ 0x{:04x} ] ---\n", 0);
-    for (const auto& block : memory_map_) {
+    out << std::format("----end---- = {}\n", total_memory_size_);
+
+    for (auto it = memory_map_.rbegin(); it != memory_map_.rend(); ++it) {
+        const auto& block = *it;
         if (!block.is_free) {
-            report_file << std::format("|  P{:02d}  |\n", block.pcb_id);
-        } else {
-            report_file << "| FREE |\n";
+            out << block.start_address + block.size << "\n";
+            out << std::format("P{:02d}\n", block.pcb_id);
+            out << block.start_address << "\n\n";
+
         }
-        report_file << std::format("[ 0x{:04x} ] ---\n", block.start_address + block.size);
     }
-    report_file.close();
-    // std::cout << "Generated memory report: " << filename << std::endl;
+
+    out << std::format("----start---- = {}\n", 0);
+}
+
+void MemoryManager::generate_memory_report(const std::string& filename) const {
+    std::ofstream report_file(filename);
+    if (!report_file) {
+        std::cerr << "Error: Could not open report file " << filename << std::endl;
+        return;
+    }
+    write_memory_report(report_file);
+}
+
+void MemoryManager::generate_memory_report(std::ostream& out) const {
+    write_memory_report(out);
 }
 
 }

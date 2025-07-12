@@ -73,10 +73,10 @@ class Scheduler::CPUWorker {
   void execute_process(std::shared_ptr<PCB> pcb, int tq) {
     pcb->assignedCore = core_id_;
     scheduler_.move_to_running(pcb);
-    
-    size_t last_tick = scheduler_.ticks_.load(); 
+    size_t first_tick = scheduler_.get_ticks();
+    size_t last_tick = first_tick; 
     int steps = 0;
-    while(steps < tq && !pcb->isComplete()){
+    while(last_tick - first_tick < tq && !pcb->isComplete()){
       if(!scheduler_.running_.load() || shutdown_requested_.load()){
         break;
       }
@@ -90,12 +90,11 @@ class Scheduler::CPUWorker {
       }
       
       if(!scheduler_.running_.load() || shutdown_requested_.load()) break;
-      last_tick = scheduler_.get_ticks();
-
-      if(last_tick % (scheduler_.delay_per_exec_ + 1) == 0){
-        pcb->step();
-        steps++; 
+  
+      if(scheduler_.get_ticks() - last_tick >= scheduler_.delay_per_exec_){
+        pcb->step(); 
       }
+      last_tick = scheduler_.get_ticks();
     }
 
     if(pcb->isComplete()){
@@ -165,7 +164,6 @@ void Scheduler::dispatch(){
         // Defer the process if it couldn't be run.
         // std::cout << "PID " << process->processID << " deferred due to lack of memory. Returning to queue." << std::endl;
         ready_queue_.push(std::move(process));
-        std::this_thread::sleep_for(std::chrono::milliseconds(50)); 
         continue;
     }
     
@@ -190,17 +188,13 @@ void Scheduler::dispatch(){
         }
       }
       
-      if (!dispatched && running_.load()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      }
     }
   }
 }
 
 void Scheduler::global_clock(){
   while(running_.load()){
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    
+    std::this_thread::sleep_for(std::chrono::milliseconds(4));
     if(!running_.load()) break;
     
     {
@@ -352,12 +346,11 @@ void Scheduler::start_batch_generation(const Config& config) {
   
   batch_generating_ = true;
   batch_generator_thread_ = std::make_unique<std::thread>([this, config]() {
-    uint32_t cpu_cycles = 0;
+    uint32_t last_tick_seen = 0;
     
-    while (batch_generating_.load()) {
-      cpu_cycles++;
-      
-      if (cpu_cycles % config.processGenFrequency == 0) {
+    while (batch_generating_.load()) {      
+      if (get_ticks() - last_tick_seen >= batch_process_freq_) {
+        last_tick_seen = get_ticks();
        std::string process_name;
        
        {
@@ -381,7 +374,6 @@ void Scheduler::start_batch_generation(const Config& config) {
         submit_process(pcb);
       }
       
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
   });
   
@@ -398,7 +390,12 @@ void Scheduler::stop_batch_generation() {
   }
   batch_generator_thread_.reset();
 
-  std::cout << "Stopped batch process generation." << std::endl;
+ uint32_t count = 0;
+  {
+    std::lock_guard<std::mutex> lock(process_counter_mutex_);
+    count = process_counter_;
+  }
+  std::cout << count << " processes generated" << std::endl;
 }
 
 void Scheduler::calculate_cpu_utilization(size_t& total_cores,

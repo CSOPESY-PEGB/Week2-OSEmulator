@@ -42,6 +42,8 @@ class Scheduler {
 
   size_t get_ticks(){ return ticks_.load(); } 
 
+  std::unique_ptr<MemoryManager> memory_manager_;
+
  private:
   friend class CPUWorker;
   class CPUWorker;
@@ -80,7 +82,6 @@ class Scheduler {
   std::thread global_clock_thread_;
   
   // --- NEW and MODIFIED MEMBERS for Memory Management ---
-  std::unique_ptr<MemoryManager> memory_manager_;
   uint32_t mem_per_proc_{4096};
   std::atomic<size_t> quantum_report_counter_{0};
   // ---------------------------------------------------
