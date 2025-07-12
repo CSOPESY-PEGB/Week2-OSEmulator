@@ -47,7 +47,7 @@ void MemoryManager::free(uint32_t pcb_id) {
             // std::cout << "Freeing memory for PID " << pcb_id << " at address " << it->start_address << std::endl;
             it->is_free = true;
             it->pcb_id = 0;
-            coalesce_free_blocks(it);
+            //coalesce_free_blocks(it);
             return;
         }
     }
